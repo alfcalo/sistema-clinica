@@ -144,8 +144,55 @@ def cargar_y_procesar_datos():
 
     return df_farma, df_alm
 
+# --- AUTENTICACIÓN ---
+def check_password():
+    """Retorna True si el usuario ingresó la contraseña correcta."""
+    
+    # Inicializar session state
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    
+    # Si ya está autenticado, retornar True
+    if st.session_state["authenticated"]:
+        return True
+    
+    # Mostrar pantalla de login
+    st.markdown("""
+    <div style='text-align: center; padding: 50px;'>
+        <h1>🏥 Sistema de Inventario - Clínica Ayacucho</h1>
+        <p style='color: #666;'>Ingrese la contraseña para acceder al sistema</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Crear columnas para centrar el input
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        password = st.text_input(
+            "Contraseña",
+            type="password",
+            key="password_input",
+            placeholder="Ingrese la contraseña de acceso"
+        )
+        
+        if st.button("🔓 Ingresar", use_container_width=True):
+            if password == st.secrets["app_password"]:
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("❌ Contraseña incorrecta. Intente nuevamente.")
+    
+    st.markdown("---")
+    st.caption("🔒 Sistema protegido - Solo personal autorizado")
+    
+    return False
+
 # --- INTERFAZ USUARIO ---
 def main():
+    # Verificar autenticación ANTES de mostrar cualquier contenido
+    if not check_password():
+        st.stop()  # Detener ejecución si no está autenticado
+    
     st.title("🏥 Sistema de Inventario Integrado (Farmacia & Almacén)")
     st.markdown("---")
     
