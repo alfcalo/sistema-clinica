@@ -293,9 +293,16 @@ def main():
     df_farma['Venc_Date'] = pd.to_datetime(df_farma['2.1_FechaVencimiento'], errors='coerce', dayfirst=True)
     df_alm['Venc_Date'] = pd.to_datetime(df_alm['2.6_FechaVencimiento'], errors='coerce', dayfirst=True)
     
-    # Usar el valor del slider para filtrar
-    venc_farma = df_farma[(df_farma['Venc_Date'] - hoy).dt.days <= dias_vencimiento][['2.1_Nombre', '2.1_FechaVencimiento', 'Stock_Real']]
-    venc_alm = df_alm[(df_alm['Venc_Date'] - hoy).dt.days <= dias_vencimiento][['2.6_Nombre', '2.6_FechaVencimiento', 'Stock_Real']]
+    # Usar el valor del slider para filtrar (solo productos que vencen en el futuro dentro del rango)
+    venc_farma = df_farma[
+        (df_farma['Venc_Date'] >= hoy) & 
+        ((df_farma['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
+    ][['2.1_Nombre', '2.1_FechaVencimiento', 'Stock_Real']]
+    
+    venc_alm = df_alm[
+        (df_alm['Venc_Date'] >= hoy) & 
+        ((df_alm['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
+    ][['2.6_Nombre', '2.6_FechaVencimiento', 'Stock_Real']]
     
     c1, c2 = st.columns(2)
     with c1:
