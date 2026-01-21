@@ -235,13 +235,27 @@ def main():
             key="search_farmacia"
         )
         
-        # FILTRO 3: Solo mostrar productos con stock > 0
+        # FILTRO: Solo mostrar productos con stock > 0
         df_farma_view = df_farma[
             df_farma['Stock_Real'] > 0
         ][[ 
             '2.1_ID', '2.1_Nombre', '2.1_PrincipioActivo', '2.1_Lote', '2.1_FechaVencimiento', 'Stock_Real'
         ]].copy()
         df_farma_view.columns = ['ID', 'Producto', 'Principio Activo', 'Lote', 'Vencimiento', 'Stock Real']
+        
+        # Convertir fecha de vencimiento a datetime para filtrado
+        df_farma_view['Venc_Date'] = pd.to_datetime(df_farma_view['Vencimiento'], errors='coerce', dayfirst=True)
+        hoy = pd.Timestamp.now().normalize()
+        dias_vencimiento = meses_vencimiento * 30
+        
+        # Aplicar filtro de vencimiento (solo productos que vencen en el futuro dentro del rango)
+        df_farma_view = df_farma_view[
+            (df_farma_view['Venc_Date'] >= hoy) & 
+            ((df_farma_view['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
+        ]
+        
+        # Eliminar la columna temporal Venc_Date antes de mostrar
+        df_farma_view = df_farma_view.drop(columns=['Venc_Date'])
         
         # Aplicar filtro de búsqueda si hay texto ingresado
         if search_term:
@@ -251,8 +265,20 @@ def main():
             )
             df_farma_view = df_farma_view[mask]
         
-        # Mostrar contador de resultados
-        st.caption(f"Mostrando {len(df_farma_view)} productos")
+        # Mostrar contador de resultados y botón de exportación
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.caption(f"Mostrando {len(df_farma_view)} productos que vencen en los próximos {meses_vencimiento} meses")
+        with col2:
+            # Botón de exportación a CSV
+            csv = df_farma_view.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Exportar CSV",
+                data=csv,
+                file_name=f"farmacia_productos_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
         
         # Aplicar colores y alertas
         def color_stock(val):
@@ -267,6 +293,7 @@ def main():
                 "ID": st.column_config.TextColumn("ID", help="ID del producto")
             }
         )
+
 
     # --- PESTAÑA 2: ALMACÉN ---
     with tab2:
@@ -301,43 +328,7 @@ def main():
             }
         )
 
-    # --- ALERTAS DE VENCIMIENTO (GLOBAL) ---
-    st.markdown("---")
-    st.header(f"📅 Alertas de Vencimiento Próximo ({meses_vencimiento} meses)")
-    
-    hoy = pd.Timestamp.now().normalize()
-    
-    # Procesar vencimientos de ambas hojas
-    df_farma['Venc_Date'] = pd.to_datetime(df_farma['2.1_FechaVencimiento'], errors='coerce', dayfirst=True)
-    df_alm['Venc_Date'] = pd.to_datetime(df_alm['2.6_FechaVencimiento'], errors='coerce', dayfirst=True)
-    
-    # Usar el valor del slider para filtrar (solo productos que vencen en el futuro dentro del rango)
-    venc_farma = df_farma[
-        (df_farma['Venc_Date'] >= hoy) & 
-        ((df_farma['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
-    ][['2.1_Nombre', '2.1_FechaVencimiento', 'Stock_Real']]
-    
-    venc_alm = df_alm[
-        (df_alm['Venc_Date'] >= hoy) & 
-        ((df_alm['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
-    ][['2.6_Nombre', '2.6_FechaVencimiento', 'Stock_Real']]
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("⚠️ En Farmacia")
-        if not venc_farma.empty:
-            st.warning(f"Hay {len(venc_farma)} productos por vencer.")
-            st.table(venc_farma)
-        else:
-            st.success("Todo al día en Farmacia.")
-            
-    with c2:
-        st.subheader("⚠️ En Almacén")
-        if not venc_alm.empty:
-            st.warning(f"Hay {len(venc_alm)} productos por vencer.")
-            st.table(venc_alm)
-        else:
-            st.success("Todo al día en Almacén.")
 
 if __name__ == "__main__":
     main()
+
