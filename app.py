@@ -265,20 +265,8 @@ def main():
             )
             df_farma_view = df_farma_view[mask]
         
-        # Mostrar contador de resultados y botón de exportación
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.caption(f"Mostrando {len(df_farma_view)} productos que vencen en los próximos {meses_vencimiento} meses")
-        with col2:
-            # Botón de exportación a CSV
-            csv = df_farma_view.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Exportar CSV",
-                data=csv,
-                file_name=f"farmacia_productos_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+        # Mostrar contador de resultados
+        st.caption(f"Mostrando {len(df_farma_view)} productos que vencen en los próximos {meses_vencimiento} meses")
         
         # Aplicar colores y alertas
         def color_stock(val):
@@ -311,13 +299,47 @@ def main():
         # Tabla con formato
         st.subheader("Listado de Productos en Almacén")
         
-        # FILTRO 3: Solo mostrar productos con stock > 0
+        # Campo de búsqueda
+        search_term_alm = st.text_input(
+            "🔍 Buscar por nombre de producto",
+            placeholder="Ingrese el nombre del producto...",
+            key="search_almacen"
+        )
+        
+        # FILTRO: Solo mostrar productos con stock > 0
         df_alm_view = df_alm[
             df_alm['Stock_Real'] > 0
         ][[
             '2.6_ID', '2.6_Nombre', '2.6_FechaVencimiento', 'Stock_Real'
         ]].copy()
         df_alm_view.columns = ['ID', 'Producto', 'Vencimiento', 'Stock Real']
+        
+        # Convertir fecha de vencimiento a datetime para filtrado
+        df_alm_view['Venc_Date'] = pd.to_datetime(df_alm_view['Vencimiento'], errors='coerce', dayfirst=True)
+        hoy = pd.Timestamp.now().normalize()
+        dias_vencimiento = meses_vencimiento * 30
+        
+        # Aplicar filtro de vencimiento (solo productos que vencen en el futuro dentro del rango)
+        df_alm_view = df_alm_view[
+            (df_alm_view['Venc_Date'] >= hoy) & 
+            ((df_alm_view['Venc_Date'] - hoy).dt.days <= dias_vencimiento)
+        ]
+        
+        # Eliminar la columna temporal Venc_Date antes de mostrar
+        df_alm_view = df_alm_view.drop(columns=['Venc_Date'])
+        
+        # Aplicar filtro de búsqueda si hay texto ingresado
+        if search_term_alm:
+            mask = df_alm_view['Producto'].str.contains(search_term_alm, case=False, na=False)
+            df_alm_view = df_alm_view[mask]
+        
+        # Mostrar contador de resultados
+        st.caption(f"Mostrando {len(df_alm_view)} productos que vencen en los próximos {meses_vencimiento} meses")
+        
+        # Aplicar colores y alertas
+        def color_stock(val):
+            color = 'background-color: #ffcccc' if val <= 5 else ''
+            return color
         
         st.dataframe(
             df_alm_view.style.applymap(color_stock, subset=['Stock Real']),
