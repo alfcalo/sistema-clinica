@@ -228,13 +228,31 @@ def main():
         # Tabla con formato
         st.subheader("Listado de Productos en Farmacia")
         
+        # Campo de búsqueda
+        search_term = st.text_input(
+            "🔍 Buscar por nombre o principio activo",
+            placeholder="Ingrese el nombre del producto o principio activo...",
+            key="search_farmacia"
+        )
+        
         # FILTRO 3: Solo mostrar productos con stock > 0
         df_farma_view = df_farma[
             df_farma['Stock_Real'] > 0
-        ][[
-            '2.1_ID', '2.1_Nombre', '2.1_Lote', '2.1_FechaVencimiento', 'Stock_Real'
+        ][[ 
+            '2.1_ID', '2.1_Nombre', '2.1_PrincipioActivo', '2.1_Lote', '2.1_FechaVencimiento', 'Stock_Real'
         ]].copy()
-        df_farma_view.columns = ['ID', 'Producto', 'Lote', 'Vencimiento', 'Stock Real']
+        df_farma_view.columns = ['ID', 'Producto', 'Principio Activo', 'Lote', 'Vencimiento', 'Stock Real']
+        
+        # Aplicar filtro de búsqueda si hay texto ingresado
+        if search_term:
+            mask = (
+                df_farma_view['Producto'].str.contains(search_term, case=False, na=False) |
+                df_farma_view['Principio Activo'].str.contains(search_term, case=False, na=False)
+            )
+            df_farma_view = df_farma_view[mask]
+        
+        # Mostrar contador de resultados
+        st.caption(f"Mostrando {len(df_farma_view)} productos")
         
         # Aplicar colores y alertas
         def color_stock(val):
